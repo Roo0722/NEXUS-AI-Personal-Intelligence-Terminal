@@ -1,4 +1,4 @@
-// functions/imagine.js
+// functions/api/imagine.js
 // Cloudflare Pages Function for Image Generation API
 // Using Pollinations.ai for keyless image generation
 
