@@ -1,4 +1,4 @@
-// functions/chat.js
+// functions/api/chat.js
 // Cloudflare Pages Function for Chat API
 // Secure backend proxy: Groq (primary) + OpenRouter (backup)
 
