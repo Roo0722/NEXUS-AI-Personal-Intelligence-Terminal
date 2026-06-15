@@ -1,6 +1,6 @@
 # NEXUS AI — Personal Intelligence Terminal
 
-A secure, self-hosted AI chatbot with a dark futuristic UI. Built for personal use with zero API key exposure to the browser. Deployed as a static site + serverless functions on Netlify (free tier).
+A secure, self-hosted AI chatbot with a dark futuristic UI inspired by Vercel's Chatbot design. Built for personal use with zero API key exposure to the browser. Deployed as a static site + serverless functions on **Cloudflare Pages** (free tier).
 
 ---
 
@@ -14,12 +14,11 @@ The NEXUS-AI-Personal-Intelligence-Terminal project is created and maintained st
 - **Dual AI provider**: Groq (primary, ultra-fast) + OpenRouter (backup, broader model selection)
 - **Automatic failover**: If one provider fails, the other is tried automatically
 - **Image generation**: Free, no-key image generation via Pollinations.ai (Flux model)
-- **Markdown rendering**: Full GFM support with syntax-highlighted code blocks and copy buttons
-- **Chat history**: Persistent sessions stored in localStorage, up to 50 conversations
-- **Persona system**: Switch between Assistant, Coder, Analyst, Writer, Concise, or Custom system prompts
-- **Export**: Download any conversation as a Markdown file
-- **Zero client-side key exposure**: All API keys live in Netlify environment variables only
-- **Dark futuristic UI**: Cyberpunk minimalism with Space Grotesk + Orbitron + JetBrains Mono typography
+- **Chat history**: Persistent sessions stored in localStorage
+- **Model selection**: Switch between Llama 3 8B, Llama 3 70B, Mixtral 8x7B, Gemma 2 9B
+- **Zero client-side key exposure**: All API keys live in Cloudflare environment variables only
+- **Dark minimalist UI**: Clean, modern design with high typographic contrast (Vercel-inspired)
+- **Responsive layout**: Collapsible sidebar, mobile-friendly interface
 
 ---
 
@@ -27,25 +26,26 @@ The NEXUS-AI-Personal-Intelligence-Terminal project is created and maintained st
 
 ```
 Browser (index.html)
-  └─► /.netlify/functions/chat    ─► Groq API (primary)
-  │                               └► OpenRouter API (fallback)
-  └─► /.netlify/functions/imagine ─► Pollinations.ai (free, no key)
+  └─► /api/chat    ─► Cloudflare Pages Function ─► Groq API (primary)
+  │                                            └► OpenRouter API (fallback)
+  └─► /api/imagine ─► Cloudflare Pages Function ─► Pollinations.ai (free, no key)
 ```
 
 - `index.html` — complete single-page frontend, no build step needed
-- `netlify/functions/chat.js` — secure proxy for Groq + OpenRouter
-- `netlify/functions/imagine.js` — free image generation proxy
-- `netlify.toml` — Netlify build + header + redirect config
+- `functions/chat.js` — secure proxy for Groq + OpenRouter (Cloudflare Workers runtime)
+- `functions/imagine.js` — free image generation proxy (Cloudflare Workers runtime)
+- `_redirects` — Cloudflare Pages routing configuration
+- `_headers` — security headers configuration
 
 ---
 
-## Deployment (Netlify Free Tier)
+## Deployment (Cloudflare Pages Free Tier)
 
 ### Step 1 — Fork / Clone this repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/secure-groq-chatbot.git
-cd secure-groq-chatbot
+git clone https://github.com/YOUR_USERNAME/NEXUS-AI-Personal-Intelligence-Terminal.git
+cd NEXUS-AI-Personal-Intelligence-Terminal
 ```
 
 ### Step 2 — Push to GitHub
@@ -54,32 +54,36 @@ cd secure-groq-chatbot
 git init
 git add .
 git commit -m "Initial commit — NEXUS AI"
-git remote add origin https://github.com/YOUR_USERNAME/secure-groq-chatbot.git
+git remote add origin https://github.com/YOUR_USERNAME/NEXUS-AI-Personal-Intelligence-Terminal.git
 git push -u origin main
 ```
 
-### Step 3 — Deploy on Netlify
+### Step 3 — Deploy on Cloudflare Pages
 
-1. Go to [app.netlify.com](https://app.netlify.com) and click **"Add new site" → "Import an existing project"**
-2. Connect GitHub and select the `secure-groq-chatbot` repo
-3. Netlify auto-detects `netlify.toml` — click **"Deploy site"**
+1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) and navigate to **Workers & Pages**
+2. Click **"Create application" → "Pages" → "Connect to Git"**
+3. Select your repository and branch (main/master)
+4. Configure build settings:
+   - **Build command**: `echo 'No build step required'`
+   - **Build output directory**: `.`
+5. Click **"Save and Deploy"**
 
 ### Step 4 — Set Environment Variables
 
-In your Netlify dashboard:  
-**Site Configuration → Environment Variables → Add a variable**
+In your Cloudflare Pages dashboard:
+**Settings → Environment Variables → Production → Add variable**
 
 | Key | Value |
 |---|---|
 | `GROQ_API_KEY` | Your Groq API key from [console.groq.com](https://console.groq.com) |
 | `OPENROUTER_API_KEY` | Your OpenRouter API key from [openrouter.ai/keys](https://openrouter.ai/keys) |
-| `SITE_URL` | Your Netlify URL, e.g. `https://your-site.netlify.app` |
+| `SITE_URL` | Your Cloudflare Pages URL, e.g. `https://your-site.pages.dev` |
 
-Then go to **Deploys → Trigger deploy** to apply the variables.
+Then go to **Deployments → Retry deployment** to apply the variables.
 
 ### Step 5 — Done
 
-Visit your Netlify URL. The app is live.
+Visit your Cloudflare Pages URL. The app is live.
 
 ---
 
@@ -104,16 +108,16 @@ Visit your Netlify URL. The app is live.
 
 ```bash
 npm install
-npx netlify dev
+npm run dev
 ```
 
-Then open `http://localhost:8888`. The Netlify CLI will load functions and proxy requests locally.
+Then open `http://localhost:8788`. The Wrangler CLI will load functions and proxy requests locally.
 
 Create a `.env` file in the project root for local dev (never commit this):
 ```
 GROQ_API_KEY=your_groq_key_here
 OPENROUTER_API_KEY=your_openrouter_key_here
-SITE_URL=http://localhost:8888
+SITE_URL=http://localhost:8788
 ```
 
 ---
@@ -125,8 +129,6 @@ SITE_URL=http://localhost:8888
 |---|---|---|
 | llama3-8b-8192 | Fastest | Good |
 | llama3-70b-8192 | Fast | Better |
-| llama-3.1-8b-instant | Ultra-fast | Good |
-| llama-3.1-70b-versatile | Fast | Best Groq |
 | mixtral-8x7b-32768 | Fast | Great (large context) |
 | gemma2-9b-it | Fast | Good |
 
@@ -145,11 +147,11 @@ SITE_URL=http://localhost:8888
 
 ## Security Notes
 
-- API keys are **only** in Netlify environment variables — never in source code or the browser
+- API keys are **only** in Cloudflare environment variables — never in source code or the browser
 - Never commit `.env` files (covered by `.gitignore`)
 - Rotate keys immediately if accidentally exposed
-- The Content-Security-Policy header in `netlify.toml` restricts what the page can load
-- DOMPurify sanitizes all AI-generated HTML before rendering
+- The Content-Security-Policy header in `_headers` restricts what the page can load
+- All connections use HTTPS
 
 ---
 
@@ -158,15 +160,30 @@ SITE_URL=http://localhost:8888
 | Layer | Technology |
 |---|---|
 | Frontend | Vanilla HTML + CSS + JavaScript (no framework, no build step) |
-| Markdown | marked.js v9 |
-| Syntax highlighting | highlight.js v11 (GitHub Dark theme) |
-| Sanitization | DOMPurify v3 |
-| Typography | Space Grotesk, Orbitron, JetBrains Mono (Google Fonts) |
-| Backend | Netlify Serverless Functions (Node.js 18+) |
+| Styling | Tailwind CSS (CDN) |
+| Typography | Inter (Google Fonts) |
+| Backend | Cloudflare Pages Functions (V8 Workers runtime) |
 | AI (primary) | Groq API |
 | AI (backup) | OpenRouter API |
 | Images | Pollinations.ai (free, Flux model) |
-| Hosting | Netlify (free tier) |
+| Hosting | Cloudflare Pages (free tier) |
+
+---
+
+## Migration from Netlify
+
+If you're migrating from Netlify:
+
+1. **Delete** `netlify.toml` and `netlify/functions/` folder
+2. **Create** `functions/` folder with Cloudflare-compatible functions
+3. **Update** `_redirects` to point to `/functions/` instead of `/.netlify/functions/`
+4. **Set** environment variables in Cloudflare Dashboard instead of Netlify
+5. **Deploy** using Cloudflare Pages instead of Netlify
+
+Key differences:
+- Cloudflare Functions use `export async function onRequestPost({ request, env })` syntax
+- Environment variables accessed via `env.VARIABLE_NAME` instead of `process.env.VARIABLE_NAME`
+- Build output directory is `.` (root) for static sites
 
 ---
 
