@@ -55,11 +55,17 @@ export async function onRequestPost({ request, env }) {
 
 async function callGroq(messages, model, stream, env) {
   const GROQ_API_KEY = env.GROQ_API_KEY;
+  
+  console.log("Groq API Key present:", !!GROQ_API_KEY);
+  console.log("Groq API Key length:", GROQ_API_KEY ? GROQ_API_KEY.length : 0);
+  
   if (!GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY environment variable not set");
+    throw new Error("GROQ_API_KEY environment variable not set in Cloudflare Pages");
   }
 
   const selectedModel = model || "llama3-8b-8192";
+
+  console.log("Calling Groq API with model:", selectedModel);
 
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -76,8 +82,11 @@ async function callGroq(messages, model, stream, env) {
     }),
   });
 
+  console.log("Groq API response status:", response.status);
+
   if (!response.ok) {
     const errText = await response.text();
+    console.error("Groq API error response:", errText);
     throw new Error(`Groq API error ${response.status}: ${errText}`);
   }
 
@@ -97,11 +106,17 @@ async function callGroq(messages, model, stream, env) {
 
 async function callOpenRouter(messages, model, stream, env) {
   const OPENROUTER_API_KEY = env.OPENROUTER_API_KEY;
+  
+  console.log("OpenRouter API Key present:", !!OPENROUTER_API_KEY);
+  console.log("OpenRouter API Key length:", OPENROUTER_API_KEY ? OPENROUTER_API_KEY.length : 0);
+  
   if (!OPENROUTER_API_KEY) {
-    throw new Error("OPENROUTER_API_KEY environment variable not set");
+    throw new Error("OPENROUTER_API_KEY environment variable not set in Cloudflare Pages");
   }
 
   const selectedModel = model || "openai/gpt-3.5-turbo";
+
+  console.log("Calling OpenRouter API with model:", selectedModel);
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -119,8 +134,11 @@ async function callOpenRouter(messages, model, stream, env) {
     }),
   });
 
+  console.log("OpenRouter API response status:", response.status);
+
   if (!response.ok) {
     const errText = await response.text();
+    console.error("OpenRouter API error response:", errText);
     throw new Error(`OpenRouter API error ${response.status}: ${errText}`);
   }
 
