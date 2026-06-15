@@ -1,15 +1,16 @@
 {
-  "name": "secure-groq-chatbot",
-  "version": "1.0.0",
-  "description": "A secure AI chatbot with Groq primary, OpenRouter backup, and image generation.",
+  "name": "nexus-ai-terminal",
+  "version": "2.0.0",
+  "description": "NEXUS AI Personal Intelligence Terminal - Deployed on Cloudflare Pages",
   "main": "index.html",
   "scripts": {
-    "dev": "netlify dev",
-    "deploy": "netlify deploy --prod"
+    "dev": "wrangler pages dev . --local",
+    "deploy": "wrangler pages deploy . --project-name=nexus-ai-terminal",
+    "build": "echo 'No build step required for static site'"
   },
   "dependencies": {},
   "devDependencies": {
-    "netlify-cli": "^17.0.0"
+    "wrangler": "^3.63.0"
   },
   "engines": {
     "node": ">=18.0.0"
