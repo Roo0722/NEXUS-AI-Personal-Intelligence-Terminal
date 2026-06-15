@@ -5,17 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEXUS AI - Personal Intelligence Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #171717; }
-        ::-webkit-scrollbar-thumb { background: #404040; border-radius: 4px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #525252; }
         
         @keyframes typing-dot {
             0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-10px); }
+            30% { transform: translateY(-8px); }
         }
         .typing-dot {
             animation: typing-dot 1.4s infinite;
@@ -23,8 +24,20 @@
         .typing-dot:nth-child(2) { animation-delay: 0.2s; }
         .typing-dot:nth-child(3) { animation-delay: 0.4s; }
         
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .message-animate { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .message-animate { animation: fadeIn 0.25s ease-out; }
+        
+        /* Markdown styles */
+        .prose pre { background: #0a0a0a; padding: 12px 16px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+        .prose code { background: #262626; padding: 2px 6px; border-radius: 4px; font-size: 0.875em; }
+        .prose pre code { background: transparent; padding: 0; }
+        .prose p { margin: 8px 0; line-height: 1.7; }
+        .prose ul, .prose ol { margin: 8px 0; padding-left: 20px; }
+        .prose li { margin: 4px 0; }
+        
+        /* Sidebar transition */
+        .sidebar-open { transform: translateX(0) !important; }
+        .sidebar-closed { transform: translateX(-100%) !important; }
     </style>
     <script>
         tailwind.config = {
@@ -33,8 +46,10 @@
                     colors: {
                         bg: '#0a0a0a',
                         surface: '#171717',
+                        surfaceHover: '#262626',
                         border: '#262626',
                         accent: '#3b82f6',
+                        accentHover: '#2563eb',
                         text: '#ededed',
                         muted: '#a1a1aa'
                     }
@@ -45,122 +60,159 @@
 </head>
 <body class="bg-bg text-text h-screen flex overflow-hidden">
 
+    <!-- Sidebar Overlay (mobile) -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden glass"></div>
+
     <!-- Sidebar -->
-    <aside id="sidebar" class="bg-surface border-r border-border w-64 flex-shrink-0 flex flex-col transition-transform duration-300 absolute md:relative h-full z-20 transform -translate-x-full md:translate-x-0">
-        <div class="p-4 border-b border-border flex items-center justify-between">
-            <h1 class="font-semibold text-lg tracking-tight">NEXUS AI</h1>
-            <button onclick="toggleSidebar()" class="md:hidden text-muted hover:text-white">✕</button>
+    <aside id="sidebar" class="sidebar-closed md:sidebar-open bg-surface border-r border-border w-[260px] flex-shrink-0 flex flex-col absolute md:relative h-full z-40 transition-transform duration-300 ease-in-out">
+        <div class="p-3 border-b border-border flex items-center justify-between">
+            <button onclick="newChat()" class="flex-1 flex items-center gap-2 px-3 py-2.5 text-sm bg-bg hover:bg-surfaceHover border border-border rounded-lg transition-colors text-left">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                New chat
+            </button>
+            <button onclick="toggleSidebar()" class="md:hidden ml-2 p-2 text-muted hover:text-white">✕</button>
         </div>
         
-        <div class="flex-1 overflow-y-auto p-4">
-            <div class="mb-6">
-                <h2 class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Chat History</h2>
-                <div id="chatHistory" class="space-y-2">
+        <div class="flex-1 overflow-y-auto p-2">
+            <div class="mb-4">
+                <h2 class="text-xs font-medium text-muted px-3 py-2">Today</h2>
+                <div id="chatHistory" class="space-y-0.5">
+                    <!-- Chat history items will be inserted here -->
                 </div>
             </div>
-            
-            <div class="mb-6">
-                <h2 class="text-xs font-medium text-muted uppercase tracking-wider mb-3">Settings</h2>
-                <div class="space-y-3">
+        </div>
+        
+        <!-- Settings at bottom -->
+        <div class="border-t border-border p-2 space-y-2">
+            <details class="group">
+                <summary class="flex items-center gap-2 px-3 py-2 text-sm text-muted hover:text-text cursor-pointer rounded-lg hover:bg-surfaceHover transition-colors list-none">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <span>Settings</span>
+                    <svg class="w-3 h-3 ml-auto transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </summary>
+                <div class="mt-1 px-3 pb-2 space-y-3">
                     <div>
-                        <label class="text-sm text-muted block mb-2">Provider</label>
-                        <select id="providerSelect" class="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent">
+                        <label class="text-xs text-muted block mb-1.5">Provider</label>
+                        <select id="providerSelect" onchange="saveSettings()" class="w-full bg-bg border border-border rounded-md px-2.5 py-2 text-sm focus:outline-none focus:border-accent transition-colors">
                             <option value="groq">Groq</option>
                             <option value="openrouter">OpenRouter</option>
                         </select>
                     </div>
                     <div>
-                        <label class="text-sm text-muted block mb-2">Model</label>
-                        <select id="modelSelect" class="w-full bg-bg border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent">
+                        <label class="text-xs text-muted block mb-1.5">Model</label>
+                        <select id="modelSelect" onchange="saveSettings()" class="w-full bg-bg border border-border rounded-md px-2.5 py-2 text-sm focus:outline-none focus:border-accent transition-colors">
                             <option value="llama3-8b-8192">Llama 3 8B</option>
                             <option value="llama3-70b-8192">Llama 3 70B</option>
                             <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
                             <option value="gemma2-9b-it">Gemma 2 9B</option>
                         </select>
                     </div>
-                    <button onclick="clearChat()" class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-400/10 rounded-md transition-colors">
-                        <span>🗑️</span> Clear Chat
-                    </button>
                 </div>
-            </div>
+            </details>
+            <button onclick="clearChat()" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted hover:text-red-400 rounded-lg hover:bg-red-400/10 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                Clear conversation
+            </button>
         </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col relative w-full">
+    <main class="flex-1 flex flex-col relative w-full min-w-0">
         <!-- Mobile Header -->
-        <header class="md:hidden h-14 border-b border-border flex items-center justify-between px-4 bg-surface">
-            <button onclick="toggleSidebar()" class="text-muted hover:text-white">☰</button>
-            <span class="font-medium">NEXUS</span>
-            <div class="w-6"></div>
+        <header class="md:hidden h-14 border-b border-border flex items-center justify-between px-4 bg-bg">
+            <button onclick="toggleSidebar()" class="p-2 text-muted hover:text-white rounded-lg hover:bg-surfaceHover transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+            <span class="font-medium text-sm">NEXUS</span>
+            <button onclick="newChat()" class="p-2 text-muted hover:text-white rounded-lg hover:bg-surfaceHover transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+            </button>
         </header>
 
         <!-- Chat Area -->
-        <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-8">
+        <div id="chatContainer" class="flex-1 overflow-y-auto">
             <!-- Welcome Screen -->
-            <div id="welcomeScreen" class="h-full flex flex-col items-center justify-center text-center">
-                <div class="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mb-6">
-                    <svg class="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div id="welcomeScreen" class="h-full flex flex-col items-center justify-center text-center p-8">
+                <div class="w-14 h-14 bg-surface border border-border rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                    <svg class="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                 </div>
-                <h2 class="text-2xl font-semibold mb-2">Welcome to NEXUS AI</h2>
-                <p class="text-muted max-w-md mb-8">Your personal intelligence terminal. Start a conversation or generate images with AI.</p>
+                <h2 class="text-xl font-semibold mb-2">Welcome to NEXUS AI</h2>
+                <p class="text-muted max-w-md mb-8 text-sm">Your personal intelligence terminal. Start a conversation or generate images with AI.</p>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full">
-                    <button onclick="setInput('Explain quantum computing in simple terms')" class="p-4 bg-surface border border-border rounded-lg hover:border-accent/50 transition-colors text-left">
-                        <div class="text-sm font-medium mb-1">💡 Explain a concept</div>
-                        <div class="text-xs text-muted">Explain quantum computing in simple terms</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl w-full">
+                    <button onclick="setInput('Explain quantum computing in simple terms')" class="group p-4 bg-surface border border-border rounded-xl hover:border-accent/50 hover:bg-surfaceHover transition-all text-left">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-lg">💡</span>
+                            <div class="text-sm font-medium">Explain a concept</div>
+                        </div>
+                        <div class="text-xs text-muted line-clamp-2">Explain quantum computing in simple terms</div>
                     </button>
-                    <button onclick="setInput('Write a creative story about a time traveler')" class="p-4 bg-surface border border-border rounded-lg hover:border-accent/50 transition-colors text-left">
-                        <div class="text-sm font-medium mb-1">✍️ Creative writing</div>
-                        <div class="text-xs text-muted">Write a creative story about a time traveler</div>
+                    <button onclick="setInput('Write a creative story about a time traveler')" class="group p-4 bg-surface border border-border rounded-xl hover:border-accent/50 hover:bg-surfaceHover transition-all text-left">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-lg">✍️</span>
+                            <div class="text-sm font-medium">Creative writing</div>
+                        </div>
+                        <div class="text-xs text-muted line-clamp-2">Write a creative story about a time traveler</div>
                     </button>
-                    <button onclick="setInput('Help me debug this code: [paste your code]')" class="p-4 bg-surface border border-border rounded-lg hover:border-accent/50 transition-colors text-left">
-                        <div class="text-sm font-medium mb-1">🐛 Code help</div>
-                        <div class="text-xs text-muted">Help me debug this code: [paste your code]</div>
+                    <button onclick="setInput('Help me debug this code: [paste your code]')" class="group p-4 bg-surface border border-border rounded-xl hover:border-accent/50 hover:bg-surfaceHover transition-all text-left">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-lg">🐛</span>
+                            <div class="text-sm font-medium">Code help</div>
+                        </div>
+                        <div class="text-xs text-muted line-clamp-2">Help me debug this code: [paste your code]</div>
                     </button>
-                    <button onclick="toggleImageMode()" class="p-4 bg-surface border border-border rounded-lg hover:border-accent/50 transition-colors text-left">
-                        <div class="text-sm font-medium mb-1">🎨 Generate image</div>
-                        <div class="text-xs text-muted">Switch to image generation mode</div>
+                    <button onclick="toggleImageMode()" class="group p-4 bg-surface border border-border rounded-xl hover:border-accent/50 hover:bg-surfaceHover transition-all text-left">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-lg">🎨</span>
+                            <div class="text-sm font-medium">Generate image</div>
+                        </div>
+                        <div class="text-xs text-muted line-clamp-2">Switch to image generation mode</div>
                     </button>
                 </div>
             </div>
 
             <!-- Messages List -->
-            <div id="messagesList" class="hidden max-w-3xl mx-auto space-y-6 pb-4"></div>
+            <div id="messagesList" class="hidden max-w-3xl mx-auto"></div>
         </div>
 
         <!-- Input Area -->
-        <div class="border-t border-border bg-surface p-4">
+        <div class="border-t border-border bg-bg p-4 md:p-6">
             <div class="max-w-3xl mx-auto">
-                <div class="flex items-end gap-3">
-                    <button id="imageModeBtn" onclick="toggleImageMode()" class="p-3 text-muted hover:text-accent transition-colors" title="Toggle image mode">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                <div class="relative bg-surface border border-border rounded-2xl focus-within:border-accent/50 focus-within:ring-1 focus-within:ring-accent/20 transition-all shadow-sm">
+                    <textarea 
+                        id="userInput" 
+                        placeholder="Message NEXUS AI..." 
+                        rows="1"
+                        class="w-full bg-transparent px-4 py-3.5 pr-14 focus:outline-none resize-none max-h-48 text-sm leading-relaxed"
+                        onkeydown="handleKeyDown(event)"
+                        oninput="autoResize(this)"
+                    ></textarea>
+                    <button 
+                        id="sendBtn" 
+                        onclick="sendMessage()"
+                        class="absolute right-2 bottom-2 p-2 bg-accent hover:bg-accentHover rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
                     </button>
-                    <div class="flex-1 relative">
-                        <textarea 
-                            id="userInput" 
-                            placeholder="Message NEXUS AI..." 
-                            rows="1"
-                            class="w-full bg-bg border border-border rounded-xl px-4 py-3 pr-12 focus:outline-none focus:border-accent resize-none max-h-32"
-                            onkeydown="handleKeyDown(event)"
-                            oninput="autoResize(this)"
-                        ></textarea>
-                        <button 
-                            id="sendBtn" 
-                            onclick="sendMessage()"
-                            class="absolute right-2 bottom-2 p-2 bg-accent hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                        </button>
-                    </div>
                 </div>
-                <div class="text-center mt-2">
+                <div class="text-center mt-3">
                     <p class="text-xs text-muted">NEXUS AI may produce inaccurate information about people, places, or facts.</p>
                 </div>
             </div>
@@ -169,15 +221,52 @@
 
     <script>
         let isImageMode = false;
+        let chatHistory = [];
         const messagesList = document.getElementById('messagesList');
         const welcomeScreen = document.getElementById('welcomeScreen');
         const userInput = document.getElementById('userInput');
         const sendBtn = document.getElementById('sendBtn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
         const imageModeBtn = document.getElementById('imageModeBtn');
 
+        // Load settings from localStorage
+        function loadSettings() {
+            const savedProvider = localStorage.getItem('nexus_provider');
+            const savedModel = localStorage.getItem('nexus_model');
+            if (savedProvider) document.getElementById('providerSelect').value = savedProvider;
+            if (savedModel) document.getElementById('modelSelect').value = savedModel;
+        }
+
+        function saveSettings() {
+            localStorage.setItem('nexus_provider', document.getElementById('providerSelect').value);
+            localStorage.setItem('nexus_model', document.getElementById('modelSelect').value);
+        }
+
         function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('-translate-x-full');
+            const isClosed = sidebar.classList.contains('sidebar-closed');
+            if (isClosed) {
+                sidebar.classList.remove('sidebar-closed');
+                sidebar.classList.add('sidebar-open');
+                sidebarOverlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.remove('sidebar-open');
+                sidebar.classList.add('sidebar-closed');
+                sidebarOverlay.classList.add('hidden');
+            }
+        }
+
+        function newChat() {
+            chatHistory = [];
+            messagesList.innerHTML = '';
+            messagesList.classList.add('hidden');
+            welcomeScreen.classList.remove('hidden');
+            userInput.value = '';
+            autoResize(userInput);
+            // Close sidebar on mobile
+            if (window.innerWidth < 768) {
+                toggleSidebar();
+            }
         }
 
         function setInput(text) {
@@ -187,15 +276,12 @@
         }
 
         function clearChat() {
-            messagesList.innerHTML = '';
-            messagesList.classList.add('hidden');
-            welcomeScreen.classList.remove('hidden');
-            userInput.value = '';
+            newChat();
         }
 
         function toggleImageMode() {
             isImageMode = !isImageMode;
-            imageModeBtn.classList.toggle('text-accent', isImageMode);
+            if (imageModeBtn) imageModeBtn.classList.toggle('text-accent', isImageMode);
             userInput.placeholder = isImageMode ? 'Describe the image you want to generate...' : 'Message NEXUS AI...';
             userInput.focus();
         }
@@ -209,7 +295,7 @@
 
         function autoResize(textarea) {
             textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+            textarea.style.height = Math.min(textarea.scrollHeight, 192) + 'px';
         }
 
         function appendMessage(role, content, isImage = false) {
@@ -217,25 +303,30 @@
             messagesList.classList.remove('hidden');
 
             const div = document.createElement('div');
-            div.className = `flex gap-4 message-animate ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+            div.className = `flex gap-3 md:gap-4 message-animate ${role === 'user' ? 'justify-end' : 'justify-start'} px-4 md:px-0 py-4`;
             
             const avatar = role === 'user' 
-                ? `<div class="w-8 h-8 rounded-sm bg-neutral-700 flex items-center justify-center text-xs">👤</div>`
-                : `<div class="w-8 h-8 rounded-sm bg-accent flex items-center justify-center text-xs">✦</div>`;
+                ? `<div class="w-7 h-7 md:w-8 md:h-7 rounded bg-neutral-700 flex items-center justify-center text-xs flex-shrink-0">👤</div>`
+                : `<div class="w-7 h-7 md:w-8 md:h-7 rounded bg-accent flex items-center justify-center text-xs flex-shrink-0"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>`;
 
             if (isImage) {
                 div.innerHTML = `
                     ${role === 'assistant' ? avatar : ''}
                     <div class="max-w-md">
-                        <img src="${content}" alt="Generated image" class="rounded-lg border border-border max-w-full" />
+                        <img src="${content}" alt="Generated image" class="rounded-xl border border-border max-w-full shadow-lg" />
                     </div>
                     ${role === 'user' ? avatar : ''}
                 `;
             } else {
-                const bubbleColor = role === 'user' ? 'bg-[#262626]' : 'bg-transparent';
+                const bubbleClass = role === 'user' 
+                    ? 'bg-surface border border-border rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%]' 
+                    : 'prose prose-invert prose-sm max-w-none text-text';
+                
+                const renderedContent = role === 'assistant' ? marked.parse(content) : content.replace(/\n/g, '<br>');
+                
                 div.innerHTML = `
                     ${role === 'assistant' ? avatar : ''}
-                    <div class="${bubbleColor} rounded-2xl px-4 py-3 max-w-[80%] whitespace-pre-wrap">${content}</div>
+                    <div class="${bubbleClass}">${renderedContent}</div>
                     ${role === 'user' ? avatar : ''}
                 `;
             }
@@ -247,10 +338,10 @@
         function appendLoading() {
             const div = document.createElement('div');
             div.id = 'loadingIndicator';
-            div.className = 'flex gap-4 justify-start message-animate';
+            div.className = 'flex gap-3 md:gap-4 justify-start message-animate px-4 md:px-0 py-4';
             div.innerHTML = `
-                <div class="w-8 h-8 rounded-sm bg-accent flex items-center justify-center text-xs">✦</div>
-                <div class="flex items-center gap-1 h-8">
+                <div class="w-7 h-7 md:w-8 md:h-7 rounded bg-accent flex items-center justify-center text-xs flex-shrink-0"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+                <div class="flex items-center gap-1.5 h-8">
                     <div class="w-2 h-2 bg-muted rounded-full typing-dot"></div>
                     <div class="w-2 h-2 bg-muted rounded-full typing-dot"></div>
                     <div class="w-2 h-2 bg-muted rounded-full typing-dot"></div>
@@ -297,11 +388,14 @@
                     const provider = document.getElementById('providerSelect').value;
                     const model = document.getElementById('modelSelect').value;
 
+                    // Add user message to history
+                    chatHistory.push({ role: 'user', content: text });
+
                     response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
-                            messages: [{ role: 'user', content: text }], 
+                            messages: chatHistory, 
                             provider, 
                             model
                         })
@@ -312,6 +406,8 @@
                     
                     if (data.content) {
                         appendMessage('assistant', data.content);
+                        // Add assistant response to history
+                        chatHistory.push({ role: 'assistant', content: data.content });
                     } else {
                         appendMessage('assistant', 'Error: ' + (data.error || 'Failed to get response'));
                     }
@@ -324,6 +420,9 @@
                 userInput.focus();
             }
         }
+
+        // Initialize
+        loadSettings();
     </script>
 </body>
 </html>
